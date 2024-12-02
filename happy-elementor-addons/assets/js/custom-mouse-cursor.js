@@ -1,10 +1,49 @@
 "use strict";
 
-function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
-function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
-function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
-function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 ;
+var haCursorOptions = null;
+var haCursor = null;
+function initiateHaCursorObject() {
+  var speed = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0.2;
+  haCursorOptions = {
+    el: null,
+    container: document.body,
+    className: 'mf-cursor ha-cursor ha-init-hide',
+    innerClassName: 'mf-cursor-inner ha-cursor-inner',
+    textClassName: 'mf-cursor-text ha-cursor-text',
+    mediaClassName: 'mf-cursor-media ha-cursor-media',
+    mediaBoxClassName: 'mf-cursor-media-box ha-cursor-media-box',
+    iconSvgClassName: 'mf-svgsprite ha-svgsprite',
+    iconSvgNamePrefix: '-',
+    iconSvgSrc: '',
+    dataAttr: 'cursor',
+    hiddenState: '-hidden',
+    textState: '-text ha-text',
+    iconState: '-icon ha-icon',
+    activeState: false,
+    mediaState: '-media ha-media',
+    stateDetection: {
+      // '-pointer': 'a,button',
+      '-hidden': 'iframe'
+    },
+    visible: true,
+    visibleOnState: false,
+    speed: speed,
+    ease: 'expo.out',
+    overwrite: true,
+    skewing: 0,
+    skewingIcon: 0,
+    skewingDelta: 0,
+    skewingDeltaMax: 0,
+    stickDelta: 0,
+    showTimeout: 20,
+    hideOnLeave: true,
+    hideTimeout: 500,
+    hideMediaTimeout: 500,
+    rotation: false
+  };
+  haCursor = new MouseFollower(haCursorOptions);
+}
 (function ($, w) {
   'use strict';
 
@@ -14,12 +53,14 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
       return;
     }
     var HappyCustomMouseCursor = elementorModules.frontend.handlers.Base.extend({
+      // Add options as a class property
+      options: haCursorOptions,
       onInit: function onInit() {
         elementorModules.frontend.handlers.Base.prototype.onInit.apply(this, arguments);
         this.run();
       },
       onElementChange: function onElementChange(e) {
-        if (e == 'ha_cmc_switcher' || e == 'ha_cmc_enable_liquid_effect' || e == 'ha_cmc_type' || e == 'ha_cmc_text' || e == 'ha_cmc_icon' || e == 'ha_cmc_image' || e == 'ha_cmc_video') {
+        if (e === 'ha_cmc_switcher' || e === 'ha_cmc_enable_liquid_effect' || e === 'ha_cmc_type' || e === 'ha_cmc_text' || e === 'ha_cmc_icon' || e === 'ha_cmc_image' || e === 'ha_cmc_video' || e === 'ha_cmc_enable_icon') {
           this.run();
         }
       },
@@ -29,10 +70,7 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
         // Get settings 
         var cmc_switcher = this.getElementSettings('ha_cmc_switcher');
         var type = this.getElementSettings('ha_cmc_type');
-        var liquid_effect = this.getElementSettings('ha_cmc_enable_liquid_effect');
-        var enable_icon = this.getElementSettings('ha_cmc_enable_icon');
         var icon = this.getElementSettings('ha_cmc_icon');
-        var enable_text = this.getElementSettings('ha_cmc_enable_text');
         var text = this.getElementSettings('ha_cmc_text');
         var image = this.getElementSettings('ha_cmc_image');
         var video = this.getElementSettings('ha_cmc_video');
@@ -40,10 +78,7 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
         // Assign values to settings object
         if (cmc_switcher) settings.cmc_switcher = cmc_switcher;
         if (type) settings.type = type;
-        if (liquid_effect) settings.liquid_effect = liquid_effect;
-        if (enable_icon) settings.enable_icon = enable_icon;
-        if (icon) settings.icon = icon.value;
-        if (enable_text) settings.enable_text = enable_text;
+        if (icon) settings.icon = "<i  class=\"".concat(icon.value, "\"></i>");
         if (text) settings.text = text;
         if (image) settings.image = image.url;
         if (video) settings.video = video.url;
@@ -53,121 +88,86 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
       },
       run: function run() {
         var settings = this.getReadySettings();
-        var cursor = null;
-        var uniqueClass = this.$element.data('id');
-        var uniqueSelector = '.elementor-element-' + uniqueClass;
-        var targetElement = this.$element.hasClass('ha-cmc-yes') ? this.$element : $(uniqueSelector).find('.ha-cmc-yes');
-        if (!uniqueSelector) return;
-        var liquid_effect = settings.liquid_effect || 'no';
-        if (liquid_effect === 'yes') {
-          cursor = new MouseFollower(_defineProperty(_defineProperty(_defineProperty(_defineProperty(_defineProperty({
-            el: null,
-            container: uniqueSelector,
-            className: 'mf-cursor',
-            textColor: '#000',
-            opacity: 1,
-            visible: true,
-            hideOnLeave: true,
-            stickDelta: 0,
-            speed: 0.2
-          }, "hideOnLeave", true), "skewingText", 90), "skewingIcon", 90), "skewingMedia", 90), "skewingDelta", 0.0001));
-        } else {
-          cursor = new MouseFollower(_defineProperty(_defineProperty(_defineProperty(_defineProperty({
-            el: null,
-            container: uniqueSelector,
-            className: 'mf-cursor',
-            textColor: '#000',
-            opacity: 1,
-            visible: true,
-            hideOnLeave: true,
-            stickDelta: 0,
-            skewingDelta: 0,
-            speed: 0.2
-          }, "hideOnLeave", true), "skewingText", 90), "skewingIcon", 90), "skewingMedia", 90));
-        }
-        if (targetElement != undefined || targetElement != null) {
-          targetElement.on('mouseenter', function () {
-            if (settings.cmc_switcher == 'yes') {
-              $('.ha-cmc-init-yes').addClass('hm-cmc-init-hidden');
-            } else {
-              $('.ha-cmc-init-yes').removeClass('hm-cmc-init-hidden');
+        var self = this;
+        if ('yes' == settings.cmc_switcher || settings.cmc_switcher != undefined) {
+          if (haCursor == null) {
+            initiateHaCursorObject();
+          }
+          var parentElement = this.$element.parents('.e-parent');
+          var hasText = undefined;
+          var hasImg = undefined;
+          var hasVideo = undefined;
+          if (parentElement.length > 0) {
+            hasText = parentElement.attr('data-cursor-text');
+            hasImg = parentElement.attr('data-cursor-img');
+            hasVideo = parentElement.attr('data-cursor-video');
+          }
+          if (!(typeof hasImg != 'undefined' || typeof hasVideo != 'undefined' || typeof hasText != 'undefined')) {
+            if ('color' == settings.type) {
+              this.$element.attr('data-cursor-text', ' ');
+              this.$element.removeAttr('data-cursor-img');
+              this.$element.removeAttr('data-cursor-video');
             }
-          });
-          targetElement.on('mouseleave', function () {
-            $('.ha-cmc-init-yes').removeClass('hm-cmc-init-hidden');
-          });
-        } else {
-          targetElement.on('mouseleave', function () {
-            $('.ha-cmc-init-yes').removeClass('hm-cmc-init-hidden');
-          });
-        }
-        $(window).on('mouseleave', function () {
-          $('.ha-cmc-init-yes').css({
-            'opacity': 0
-          });
-        });
-        $(window).on('mouseenter', function () {
-          $('.ha-cmc-init-yes').css({
-            'opacity': 1
-          });
-        });
-        this.$element.on('mouseenter', function (e) {
-          var enable_text = settings.enable_text || '';
-          var type = settings.type || '';
-          var text = settings.text || '';
-          var enable_icon = settings.enable_icon || '';
-          var icon = settings.icon || '';
-          var image = settings.image || '';
-          var video = settings.video || '';
-          if (type == 'text') {
-            if (enable_text == 'yes') {
-              if (text) {
-                cursor.setText(text);
+            if ('text' == settings.type) {
+              if (settings.text && settings.text != undefined) {
+                this.$element.attr('data-cursor-text', settings.text);
               } else {
-                cursor.setText('');
+                this.$element.attr('data-cursor-text', ' ');
               }
-            } else {
-              cursor.setText('');
+              this.$element.removeAttr('data-cursor-img');
+              this.$element.removeAttr('data-cursor-video');
             }
-          }
-          if (type == 'icon') {
-            if (enable_icon == 'yes') {
-              var getIcon = "<i class='".concat(icon, "'></i>");
-              if (icon) {
-                cursor.setText(getIcon);
+            if ('icon' == settings.type) {
+              if (settings.icon && settings.icon != undefined) {
+                this.$element.attr('data-cursor-text', settings.icon);
               } else {
-                cursor.setText('');
+                this.$element.attr('data-cursor-text', ' ');
               }
-            } else {
-              cursor.setText('');
+              this.$element.removeAttr('data-cursor-img');
+              this.$element.removeAttr('data-cursor-video');
             }
-          }
-          if (type == 'image') {
-            if (image) {
-              cursor.setImg(image);
-            } else {
-              cursor.setImg('');
+            if ('image' == settings.type) {
+              if (settings.image) {
+                this.$element.attr('data-cursor-img', settings.image);
+              } else {
+                this.$element.attr('data-cursor-img', ' ');
+              }
+              this.$element.removeAttr('data-cursor-text');
+              this.$element.removeAttr('data-cursor-video');
             }
-          }
-          if (type == 'video') {
-            if (video) {
-              cursor.setVideo(video);
-            } else {
-              cursor.setVideo('');
+            if ('video' == settings.type) {
+              if (settings.video) {
+                this.$element.attr('data-cursor-video', settings.video);
+              } else {
+                this.$element.attr('data-cursor-video', ' ');
+              }
+              this.$element.removeAttr('data-cursor-text');
+              this.$element.removeAttr('data-cursor-img');
             }
+            var uniqueID = this.$element.data('id');
+            var uniqueSelector = 'elementor-element-' + uniqueID;
+            this.$element.on('mouseenter', function (e) {
+              haCursor.el.classList.add(uniqueSelector);
+            });
+            this.$element.on('mouseleave', function (e) {
+              haCursor.el.classList.remove(uniqueSelector);
+            });
           }
-        });
-
-        // On mouseleave, remove text from the cursor
-        this.$element.on('mouseleave', function () {
-          cursor.removeText();
-          cursor.removeImg();
-          cursor.removeMedia();
-        });
+        } else {
+          if ('text' == settings.type || 'icon' == settings.type || settings.type == undefined) {
+            this.$element.removeAttr('data-cursor-text');
+          }
+          if ('image' == settings.type || settings.type == undefined) {
+            this.$element.removeAttr('data-cursor-img');
+          }
+          if ('video' == settings.type || settings.type == undefined) {
+            this.$element.removeAttr('data-cursor-video');
+          }
+        }
       }
     });
 
-    //global hook
+    // Global hook
     elementorFrontend.hooks.addAction("frontend/element_ready/global", function ($scope) {
       elementorFrontend.elementsHandler.addHandler(HappyCustomMouseCursor, {
         $element: $scope
