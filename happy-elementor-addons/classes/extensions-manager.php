@@ -84,6 +84,12 @@ class Extensions_Manager {
 				'demo' => 'https://happyaddons.com/global-badge/',
 				'is_pro' => true,
 			],
+			'multi-layer-parallax' => [
+				'title' => __( 'Multi Layer Parallax', 'happy-addons-pro' ),
+				'icon' => 'huge huge-layers-02',
+				'demo' => 'https://happyaddons.com/docs/happy-addons-for-elementor-pro/features/multi-layer-parallax/',
+				'is_pro' => true,
+			]
 		];
 
 		return apply_filters( 'happyaddons_get_pro_features_map', $pro_features_map );
@@ -185,6 +191,12 @@ class Extensions_Manager {
 				'icon' => 'huge huge-web-design-02',
 				'demo' => 'https://happyaddons.com/docs/happy-addons-for-elementor/happy-features/background-parallax/',
 				'is_pro' => false,
+			],
+			'liquid-glass' => [
+				'title' => __( 'Liquid Glass', 'happy-addons-pro' ),
+				'icon' => 'hm hm-reading-glass',
+				'demo' => 'https://happyaddons.com/',
+				'is_pro' => false,
 			]
 		];
 	}
@@ -263,6 +275,7 @@ class Extensions_Manager {
 			case 'custom-mouse-cursor':
 			case 'custom-js':
 			case 'background-parallax':
+			case 'liquid-glass':
 				$cls_name = ucwords( str_replace( '-', ' ', $feature_key ) ); //remove ' - ' & uc first later
 				$cls_name = '\Happy_Addons\Elementor\Extensions\\' . str_replace( ' ', '_', $cls_name );
 				$cls_name::instance()->init();

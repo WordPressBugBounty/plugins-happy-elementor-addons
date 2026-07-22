@@ -382,6 +382,10 @@ p + .ha-review-notice__actions {
 	color: var(--e-button-context-color-dark);
 }
 
+.ha-review-notice__actions > .ha-review-button.ha-review-button--cta:first-child {
+	color: #fff;
+}
+
 #happy_addons_news_update .ha-setup--wrap {
 	margin: -12px -12px 0;
 	padding: 12px;
