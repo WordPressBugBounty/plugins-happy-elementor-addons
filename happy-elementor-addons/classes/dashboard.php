@@ -86,7 +86,7 @@ class Dashboard {
         parse_str( $posted_data, $data );
         $data = ha_sanitize_array_recursively( $data );
 
-        do_action( 'happyaddons_save_dashboard_data', $data );
+        ha_safe_do_action( 'happyaddons_save_dashboard_data', $data );
 
         wp_send_json_success();
     }
@@ -108,7 +108,27 @@ class Dashboard {
 
         $inactive_features = array_values( array_diff( array_keys( $widgets_map ), $features ) );
 
+        /* Always on features can not be disabled */
+        $always_on_features = Extensions_Manager::get_always_on_features();
+        if ( ! empty( $always_on_features ) ) {
+            $inactive_features = array_values( array_diff( $inactive_features, $always_on_features ) );
+        }
+
         Extensions_Manager::save_inactive_features( $inactive_features );
+    }
+
+    public static function save_extensions_data( $data ) {
+        $extensions = ! empty( $data['extensions'] ) ? $data['extensions'] : [];
+
+        /* Check whether Pro is available and allow to disable pro extensions */
+        $extensions_map = self::get_real_extensions_map();
+        if ( ha_has_pro() ) {
+            $extensions_map = array_merge( $extensions_map, Extensions_Manager::get_pro_extensions_map() );
+        }
+
+        $inactive_extensions = array_values( array_diff( array_keys( $extensions_map ), $extensions ) );
+
+        Extensions_Manager::save_inactive_extensions( $inactive_extensions );
     }
 
     public static function save_credentials_data( $data ) {
@@ -303,6 +323,10 @@ class Dashboard {
         return $widgets_map;
     }
 
+    private static function get_real_extensions_map() {
+        return Extensions_Manager::get_extensions_map();
+    }
+
     public static function get_features() {
         $widgets_map = self::get_real_features_map();
 
@@ -310,6 +334,27 @@ class Dashboard {
 
         uksort( $widgets_map, [ __CLASS__, 'sort_widgets' ] );
         return $widgets_map;
+    }
+
+    public static function get_gsap_features() {
+        return array_filter( self::get_features(), function ( $feature_data ) {
+            return ! empty( $feature_data['is_gsap'] );
+        } );
+    }
+
+    public static function get_gsap_widgets() {
+        return array_filter( self::get_widgets(), function ( $widget_data ) {
+            return ! empty( $widget_data['is_gsap'] );
+        } );
+    }
+
+    public static function get_extensions() {
+        $extensions_map = self::get_real_extensions_map();
+
+        $extensions_map = array_merge( $extensions_map, Extensions_Manager::get_pro_extensions_map() );
+
+        uksort( $extensions_map, [ __CLASS__, 'sort_widgets' ] );
+        return $extensions_map;
     }
 
     public static function get_credentials() {
@@ -436,6 +481,14 @@ class Dashboard {
                 'title' => esc_html__( 'Features', 'happy-elementor-addons' ),
                 'renderer' => [ __CLASS__, 'render_features' ],
             ],
+            'extensions' => [
+                'title' => esc_html__( 'Extension', 'happy-elementor-addons' ),
+                'renderer' => [ __CLASS__, 'render_extensions' ],
+            ],
+            'gsap' => [
+                'title' => esc_html__( 'GSAP', 'happy-elementor-addons' ),
+                'renderer' => [ __CLASS__, 'render_gsap' ],
+            ],
             'credentials' => [
                 'title' => esc_html__( 'Credentials', 'happy-elementor-addons' ),
                 'renderer' => [ __CLASS__, 'render_credentials' ],
@@ -450,7 +503,7 @@ class Dashboard {
             ],
         ];
 
-        return apply_filters( 'happyaddons_dashboard_get_tabs', $tabs );
+        return ha_safe_apply_filters( 'happyaddons_dashboard_get_tabs', $tabs );
     }
 
     private static function load_template( $template ) {
@@ -481,6 +534,14 @@ class Dashboard {
 
     public static function render_features() {
         self::load_template( 'features' );
+    }
+
+    public static function render_extensions() {
+        self::load_template( 'extensions' );
+    }
+
+    public static function render_gsap() {
+        self::load_template( 'gsap' );
     }
 
     public static function render_credentials() {

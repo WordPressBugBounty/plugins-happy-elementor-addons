@@ -32,6 +32,8 @@ class Base {
 	}
 
 	public function init() {
+		HappyAddons_Classes\Extensions_Manager::register_extension_filters();
+
 		$this->include_files();
 
 		// Register custom category
@@ -110,6 +112,7 @@ class Base {
 		add_action('elementor/css-file/post/enqueue', [HappyAddons_Classes\Assets_Manager::class, 'frontend_enqueue_exceptions']);
 		// Edit and preview enqueue
 		add_action('elementor/preview/enqueue_styles', [HappyAddons_Classes\Assets_Manager::class, 'enqueue_preview_styles']);
+		add_action('elementor/preview/enqueue_scripts', [HappyAddons_Classes\Assets_Manager::class, 'enqueue_preview_scripts']);
 		// Enqueue editor & editorv2 scripts
 		add_action('elementor/editor/after_enqueue_scripts', [HappyAddons_Classes\Assets_Manager::class, 'editor_enqueue']);
 		// Paragraph toolbar registration
@@ -148,6 +151,7 @@ class Base {
 			add_filter( 'plugin_action_links_' . plugin_basename( HAPPY_ADDONS__FILE__ ), [ HappyAddons_Classes\Dashboard::class, 'add_action_links' ] );
 			add_action( 'happyaddons_save_dashboard_data', [ HappyAddons_Classes\Dashboard::class, 'save_widgets_data' ], 1);
 			add_action( 'happyaddons_save_dashboard_data', [ HappyAddons_Classes\Dashboard::class, 'save_features_data' ] );
+			add_action( 'happyaddons_save_dashboard_data', [ HappyAddons_Classes\Dashboard::class, 'save_extensions_data' ] );
 			add_action( 'happyaddons_save_dashboard_data', [ HappyAddons_Classes\Dashboard::class, 'save_credentials_data' ] );
 			add_action( 'happyaddons_save_dashboard_data', [ HappyAddons_Classes\Dashboard::class, 'disable_unused_widget' ], 10);
 			add_action( 'in_admin_header', [ HappyAddons_Classes\Dashboard::class, 'remove_all_notices' ], PHP_INT_MAX );
@@ -235,8 +239,10 @@ class Base {
 	 * @param Controls_Manager $controls_Manager
 	 */
 	public function register_controls( Controls_Manager $controls_Manager ) {
-		$Foreground = __NAMESPACE__ . '\Controls\Group_Control_Foreground';
-		$controls_Manager->add_group_control( $Foreground::get_type(), new $Foreground() );
+		if ( ! class_exists( __NAMESPACE__ . '\Extensions\Foreground_Overlay' ) || ha_is_foreground_overlay_enabled() ) {
+			$Foreground = __NAMESPACE__ . '\Controls\Group_Control_Foreground';
+			$controls_Manager->add_group_control( $Foreground::get_type(), new $Foreground() );
+		}
 
 		$Select2 = __NAMESPACE__ . '\Controls\Select2';
 		ha_elementor()->controls_manager->register( new $Select2() );

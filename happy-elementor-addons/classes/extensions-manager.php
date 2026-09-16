@@ -8,26 +8,157 @@ use Happy_Addons\Elementor\Extensions as Features;
 class Extensions_Manager {
 	const FEATURES_DB_KEY = 'happyaddons_inactive_features';
 
+	const EXTENSIONS_DB_KEY = 'happyaddons_inactive_extensions';
+
 	/**
 	 * Initialize
 	 */
 	public static function init() {
+		self::register_extension_filters();
 
-		add_action( 'elementor/element/button/section_style/after_section_start', [ Features\Fixed_Size_Button::class, 'add_button_controls' ] );
+		if ( ha_is_button_fixed_size_enabled() ) {
+			add_action( 'elementor/element/button/section_style/after_section_start', [ Features\Fixed_Size_Button::class, 'add_button_controls' ] );
+		}
 
 		$inactive_features = self::get_inactive_features();
+		$always_on_features = self::get_always_on_features();
 
 		foreach ( self::get_local_features_map() as $feature_key => $data ) {
-			if ( ! in_array( $feature_key, $inactive_features ) ) {
+			if ( in_array( $feature_key, $always_on_features, true ) || ! in_array( $feature_key, $inactive_features ) ) {
 				self::enable_feature( $feature_key );
 			}
 		}
 
 		foreach ( self::get_pro_features_map() as $feature_key => $data ) {
-			if ( in_array( $feature_key, $inactive_features ) ) {
+			if ( ! in_array( $feature_key, $always_on_features, true ) && in_array( $feature_key, $inactive_features ) ) {
 				self::disable_pro_feature( $feature_key );
 			}
 		}
+
+		$inactive_extensions = self::get_inactive_extensions();
+
+		foreach ( self::get_local_extensions_map() as $extension_key => $data ) {
+			if ( ! in_array( $extension_key, $inactive_extensions ) ) {
+				self::enable_extension( $extension_key );
+			}
+		}
+
+		foreach ( self::get_pro_extensions_map() as $extension_key => $data ) {
+			if ( in_array( $extension_key, $inactive_extensions ) ) {
+				self::disable_pro_extension( $extension_key );
+			}
+		}
+	}
+
+	public static function get_extensions_map() {
+		$extensions_map = self::get_local_extensions_map();
+
+		return ha_safe_apply_filters( 'happyaddons_get_extensions_map', $extensions_map );
+	}
+
+	public static function get_inactive_extensions() {
+		return get_option( self::EXTENSIONS_DB_KEY, [] );
+	}
+
+	public static function save_inactive_extensions( $extensions = [] ) {
+		update_option( self::EXTENSIONS_DB_KEY, $extensions );
+	}
+
+	/**
+	 * Register "disable" filters for inactive extensions.
+	 *
+	 * This must run before any extension is checked via ha_is_*_enabled()
+	 * so the filters are in place regardless of the hook order.
+	 */
+	public static function register_extension_filters() {
+		foreach ( self::get_inactive_extensions() as $extension_key ) {
+			self::disable_extension( $extension_key );
+		}
+	}
+
+	/**
+	 * Get the pro extensions map for dashboard only
+	 *
+	 * @return array
+	 */
+	public static function get_pro_extensions_map() {
+
+		$pro_extensions_map = [
+            'image-masking'=> [
+                'title'  => __( 'Image Masking', 'happy-addons-pro' ),
+                'icon'   => 'hm hm-image-masking',
+                'demo'   => 'https://happyaddons.com/image-masking-demo/',
+                'is_pro' => true
+            ],
+            
+        ];
+		return ha_safe_apply_filters( 'happyaddons_get_pro_extensions_map', $pro_extensions_map );
+	}
+
+	/**
+	 * Get the list of features that are always on and can not be disabled.
+	 *
+	 * Features marked with `always_on => true` are excluded from the inactive
+	 * list both while running and while saving dashboard settings.
+	 *
+	 * @return array
+	 */
+	public static function get_always_on_features() {
+		$always_on_features = [];
+
+		foreach ( self::get_local_features_map() as $feature_key => $data ) {
+			if ( ! empty( $data['always_on'] ) ) {
+				$always_on_features[] = $feature_key;
+			}
+		}
+
+		foreach ( self::get_pro_features_map() as $feature_key => $data ) {
+			if ( ! empty( $data['always_on'] ) ) {
+				$always_on_features[] = $feature_key;
+			}
+		}
+
+		return array_values( array_unique( $always_on_features ) );
+	}
+
+	/**
+	 * Get the free extensions map
+	 *
+	 * @return array
+	 */
+	public static function get_local_extensions_map() {
+		return [
+			'background-hover-effect' => [
+				'title' => __( 'Background Hover Effect', 'happy-elementor-addons' ),
+				'icon' => 'hm hm-scroll-top',
+				'demo' => 'https://happyaddons.com/docs/happy-addons-for-elementor/happy-features/',
+				'is_pro' => false,
+			],
+			'foreground-overlay' => [
+				'title' => __( 'Foreground Overlay', 'happy-elementor-addons' ),
+				'icon' => 'hm hm-flip-card2',
+				'demo' => 'https://happyaddons.com/docs/happy-addons-for-elementor/happy-features/',
+				'is_pro' => false,
+			],
+			'button-fixed-size' => [
+				'title' => __( 'Fixed Size Button', 'happy-elementor-addons' ),
+				'icon' => 'hm hm-fixed-size-button',
+				'demo' => 'https://happyaddons.com/docs/happy-addons-for-elementor/happy-features/',
+				'is_pro' => false,
+			],
+			'widget-background-overlay' => [
+				'title' => __( 'Widget Background Overlay', 'happy-elementor-addons' ),
+				'icon' => 'hm hm-file-rotate',
+				'demo' => 'https://happyaddons.com/docs/happy-addons-for-elementor/happy-features/',
+				'is_pro' => false,
+			],
+			'text-stroke' => [
+				'title' => __( 'Text Stroke', 'happy-elementor-addons' ),
+				'icon' => 'hm hm-text-outline',
+				'demo' => 'https://happyaddons.com/docs/happy-addons-for-elementor/happy-features/',
+				'is_pro' => false,
+			],
+		];
 	}
 
 	public static function get_features_map() {
@@ -36,7 +167,7 @@ class Extensions_Manager {
 		$local_features_map = self::get_local_features_map();
 		$features_map = array_merge( $features_map, $local_features_map );
 
-		return apply_filters( 'happyaddons_get_features_map', $features_map );
+		return ha_safe_apply_filters( 'happyaddons_get_features_map', $features_map );
 	}
 
 	public static function get_inactive_features() {
@@ -60,11 +191,12 @@ class Extensions_Manager {
 				'demo' => 'https://happyaddons.com/display-condition/',
 				'is_pro' => true,
 			],
-			'image-masking' => [
-				'title' => __( 'Image Masking', 'happy-elementor-addons' ),
-				'icon' => 'hm hm-image-masking',
-				'demo' => 'https://happyaddons.com/image-masking-demo/',
+			'live-copy' => [
+				'title' => __( 'Live Copy', 'happy-addons-pro' ),
+				'icon' => 'hm hm-copy',
+				'demo' => 'https://happyaddons.com/docs/happy-addons-for-elementor-pro/features/#/',
 				'is_pro' => true,
+				'always_on' => true,
 			],
 			'happy-particle-effects' => [
 				'title' => __( 'Happy Particle Effects', 'happy-elementor-addons' ),
@@ -84,15 +216,47 @@ class Extensions_Manager {
 				'demo' => 'https://happyaddons.com/global-badge/',
 				'is_pro' => true,
 			],
+
+			// GSAP Features Mapping 
+			'horizontal-scroll' => [
+				'title' => __( 'Horizontal Scroll', 'happy-addons-pro' ),
+				'icon' => 'huge huge-horizonal-scroll-point-round',
+				'demo' => 'https://happyaddons.com/docs/happy-addons-for-elementor-pro/features/#/',
+				'is_pro' => true,
+			],
+			'infinite-marquee' => [
+				'title' => __( 'Marquee', 'happy-addons-pro' ),
+				'icon' => 'huge huge-infinity-02',
+				'demo' => 'https://happyaddons.com/docs/happy-addons-for-elementor-pro/features/#/',
+				'is_pro' => true,
+			],
+			'global-animation' => [
+                'title'  => __( 'Animation', 'happy-addons-pro' ),
+                'icon'   => 'hm hm-alien',
+                'demo'   => 'https://happyaddons.com/docs/happy-addons-for-elementor-pro/features/#/',
+                'is_pro' => true
+            ],
+			'sticky-pin-element' => [
+				'title'  => __( 'Sticky Pin Element', 'happy-addons-pro' ),
+				'icon'   => 'hm hm-sticky',
+				'demo'   => 'https://happyaddons.com/docs/happy-addons-for-elementor-pro/features/#/',
+				'is_pro' => true
+			],
 			'multi-layer-parallax' => [
 				'title' => __( 'Multi Layer Parallax', 'happy-addons-pro' ),
 				'icon' => 'huge huge-layers-02',
 				'demo' => 'https://happyaddons.com/docs/happy-addons-for-elementor-pro/features/multi-layer-parallax/',
 				'is_pro' => true,
+			],
+			'happy-image-trails' => [
+				'title' => __( 'Image Trails', 'happy-addons-pro' ),
+				'icon' => 'hm hm-media-all',
+				'demo' => 'https://happyaddons.com/docs/happy-addons-for-elementor-pro/features/#',
+				'is_pro' => true,
 			]
 		];
 
-		return apply_filters( 'happyaddons_get_pro_features_map', $pro_features_map );
+		return ha_safe_apply_filters( 'happyaddons_get_pro_features_map', $pro_features_map );
 	}
 
 	/**
@@ -106,6 +270,11 @@ class Extensions_Manager {
 				'title' => __( 'Background Overlay', 'happy-elementor-addons' ),
 				'icon' => 'hm hm-layer',
 				'demo' => 'https://happyaddons.com/background-overlay-demo/',
+				'is_pro' => false,
+			],
+			'foreground-overlay' => [
+				'title' => __( 'Foreground Overlay', 'happy-elementor-addons' ),
+				'icon' => 'hm hm-layer',
 				'is_pro' => false,
 			],
 			'grid-layer' => [
@@ -179,6 +348,7 @@ class Extensions_Manager {
 				'icon' => 'hm hm-cursor-hover-click',
 				'demo' => 'https://demo-x.happyaddons.com/custom-mouse-cursor-feature-demo/',
 				'is_pro' => false,
+				'is_gsap' => true,
 			],
 			'custom-js' => [
 				'title' => __( 'Custom JS', 'happy-elementor-addons' ),
@@ -192,12 +362,31 @@ class Extensions_Manager {
 				'demo' => 'https://happyaddons.com/docs/happy-addons-for-elementor/happy-features/background-parallax/',
 				'is_pro' => false,
 			],
+			'appearing-image-animation' => [
+				'title' => __( 'Appearing Image Animation', 'happy-elementor-addons' ),
+				'icon' => 'huge huge-layer-mask-1',
+				'demo' => 'https://happyaddons.com/docs/happy-addons-for-elementor/happy-features/#/',
+				'is_pro' => false,
+				'is_gsap' => true,
+			],
+			'heading-text-animation' => [
+				'title' => __( 'Text Animation', 'happy-elementor-addons' ),
+				'icon' => 'hm hm-text-outline',
+				'demo' => 'https://happyaddons.com/docs/happy-addons-for-elementor/happy-features/#/',
+				'is_pro' => false,
+				'is_gsap' => true,
+			],
 			'liquid-glass' => [
 				'title' => __( 'Liquid Glass', 'happy-addons-pro' ),
 				'icon' => 'hm hm-reading-glass',
 				'demo' => 'https://happyaddons.com/',
 				'is_pro' => false,
-			]
+			],
+			'container-hover-text-color' => [
+				'title' => __( 'Background Hover Effect', 'happy-elementor-addons' ),
+				'icon' => 'hm hm-cursor-hover-click',
+				'is_pro' => false,
+			],
 		];
 	}
 
@@ -205,7 +394,17 @@ class Extensions_Manager {
 
 		switch ($feature_key) {
 			case 'background-overlay':
-				add_action( 'elementor/element/common/_section_background/after_section_end', [Features\Background_Overlay::class, 'add_section'] );
+				if ( ha_is_widget_background_overlay_enabled() ) {
+					add_action( 'elementor/element/common/_section_background/after_section_end', [Features\Background_Overlay::class, 'add_section'] );
+				}
+				break;
+
+			case 'foreground-overlay':
+				add_action( 'elementor/element/container/section_background_overlay/after_section_end', [Features\Foreground_Overlay::class, 'add_section'] );
+				add_action( 'elementor/frontend/before_render', [Features\Foreground_Overlay::class, 'before_render'], 1 );
+				add_action( 'elementor/frontend/before_register_scripts', [Features\Foreground_Overlay::class, 'register_scripts'] );
+				add_action( 'elementor/preview/enqueue_scripts', [Features\Foreground_Overlay::class, 'preview_enqueue_scripts'] );
+				add_action( 'elementor/preview/enqueue_styles', [Features\Foreground_Overlay::class, 'preview_enqueue_styles'] );
 				break;
 
 			case 'grid-layer':
@@ -254,7 +453,7 @@ class Extensions_Manager {
 				break;
 
 			case 'text-stroke':
-				if( ! in_array( 'text-stroke', ha_get_inactive_features() ) ) {
+				if( ! in_array( 'text-stroke', ha_get_inactive_features() ) && ha_is_text_stroke_enabled() ) {
 					add_action( 'elementor/element/heading/section_title_style/before_section_end', [ Features\Text_Stroke::class, 'add_text_stroke' ] );
 					add_action( 'elementor/element/theme-page-title/section_title_style/before_section_end', [ Features\Text_Stroke::class, 'add_text_stroke' ] );
 					add_action( 'elementor/element/theme-site-title/section_title_style/before_section_end', [ Features\Text_Stroke::class, 'add_text_stroke' ] );
@@ -275,7 +474,10 @@ class Extensions_Manager {
 			case 'custom-mouse-cursor':
 			case 'custom-js':
 			case 'background-parallax':
+			case 'appearing-image-animation':
+			case 'heading-text-animation':
 			case 'liquid-glass':
+			case 'container-hover-text-color':
 				$cls_name = ucwords( str_replace( '-', ' ', $feature_key ) ); //remove ' - ' & uc first later
 				$cls_name = '\Happy_Addons\Elementor\Extensions\\' . str_replace( ' ', '_', $cls_name );
 				$cls_name::instance()->init();
@@ -287,10 +489,6 @@ class Extensions_Manager {
 		switch ($feature_key) {
 			case 'display-conditions':
 				add_filter( 'happyaddons/extensions/display_condition', '__return_false' );
-				break;
-
-			case 'image-masking':
-				add_filter( 'happyaddons/extensions/image_masking', '__return_false' );
 				break;
 
 			case 'happy-particle-effects':
@@ -305,5 +503,23 @@ class Extensions_Manager {
 			// 	add_filter( 'happyaddons/extensions/happy_preset', '__return_false' );
 			// 	break;
 		}
+	}
+
+	protected static function enable_extension( $extension_key ) {
+		switch ( $extension_key ) {
+			default:
+				do_action( 'happyaddons/enable_extension', $extension_key );
+				break;
+		}
+	}
+
+	protected static function disable_extension( $extension_key ) {
+		$filter_key = str_replace( '-', '_', $extension_key );
+		add_filter( 'happyaddons/extensions/' . $filter_key, '__return_false' );
+	}
+
+	protected static function disable_pro_extension( $extension_key ) {
+		$filter_key = str_replace( '-', '_', $extension_key );
+		add_filter( 'happyaddons/extensions/' . $filter_key, '__return_false' );
 	}
 }

@@ -294,7 +294,6 @@
 #elementor-template-library-header-preview .haTemplateLibrary__pro-button:hover,
 #elementor-template-library-header-preview .haTemplateLibrary__pro-button:focus {
 	background-color: rgb(237.2133333333, 98.7866666667, 153.6933333333);
-	color: #fff;
 }
 #elementor-template-library-header-preview .haTemplateLibrary__insert-button {
 	background-color: #562dd4;
@@ -303,5 +302,4 @@
 #elementor-template-library-header-preview .haTemplateLibrary__insert-button:hover,
 #elementor-template-library-header-preview .haTemplateLibrary__insert-button:focus {
 	background-color: rgb(120.0671936759, 87.3320158103, 220.6679841897);
-	color: #fff;
 }

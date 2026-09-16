@@ -1648,5 +1648,589 @@ function haObserveTarget(target, callback) {
         $element: $scope
       });
     });
+
+    // Image Cycle Handler
+    var haImageCycleHandler = ModuleHandler.extend({
+      onInit: function onInit() {
+        ModuleHandler.prototype.onInit.apply(this, arguments);
+        this.run();
+      },
+      onElementChange: debounce(function (changedProp) {
+        this._icReplayEntrance = ['ha_ic_animation_mode', 'ha_ic_direction', 'ha_ic_stagger', 'ha_ic_stagger_v3', 'ha_ic_entrance_duration', 'ha_ic_heading_duration', 'ha_ic_initial_scale', 'ha_ic_initial_opacity', 'ha_ic_play_on_appear', 'ha_ic_title', 'ha_ic_title_second', 'ha_ic_subtitle', 'ha_ic_title_tag', 'ha_ic_subtitle_tag'].indexOf(changedProp) !== -1;
+        this.run();
+      }, 300),
+      onDestroy: function onDestroy() {
+        if (this._icMm) {
+          try {
+            this._icMm.revert();
+          } catch (e) {}
+          this._icMm = null;
+        }
+        clearTimeout(this._icResumeTimer);
+        this.$element.find('.ha-ic-wrapper, .ha-ic-card').off('.icRotationPause');
+        this._icRotationTweens = [];
+        this._icClearPlayOnAppear();
+        ModuleHandler.prototype.onDestroy.apply(this, arguments);
+      },
+      _icSetRotationPaused: function _icSetRotationPaused(paused) {
+        var tweens = this._icRotationTweens || [];
+        for (var i = 0; i < tweens.length; i++) {
+          try {
+            if (paused) {
+              tweens[i].pause();
+            } else {
+              tweens[i].play();
+            }
+          } catch (e) {}
+        }
+      },
+      // "Animation Play On Appearing": hold the entrance timeline until the
+      // widget reaches the center of the viewport while scrolling, then play.
+      _icObservePlayOnAppear: function _icObservePlayOnAppear(el) {
+        var self = this;
+        if (self._icPlayOnAppearIO) {
+          try {
+            self._icPlayOnAppearIO.disconnect();
+          } catch (e) {}
+          self._icPlayOnAppearIO = null;
+        }
+        if (!('IntersectionObserver' in window) || !el) {
+          self._icResumePlayOnAppear();
+          return;
+        }
+        self._icPlayOnAppearIO = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              self._icResumePlayOnAppear();
+            }
+          });
+        }, {
+          root: null,
+          rootMargin: '-50% 0px -50% 0px',
+          threshold: 0
+        });
+        self._icPlayOnAppearIO.observe(el);
+      },
+      _icResumePlayOnAppear: function _icResumePlayOnAppear() {
+        var self = this;
+        if (self._icPlayOnAppearIO) {
+          try {
+            self._icPlayOnAppearIO.disconnect();
+          } catch (e) {}
+          self._icPlayOnAppearIO = null;
+        }
+        if (!self._icPlayOnAppearPending) {
+          return;
+        }
+        self._icPlayOnAppearPending = false;
+        self._icHasEntered = true;
+        if (self._icTimeline) {
+          try {
+            self._icTimeline.play();
+          } catch (e) {}
+          self._icTimeline = null;
+        }
+      },
+      _icClearPlayOnAppear: function _icClearPlayOnAppear() {
+        var self = this;
+        if (self._icPlayOnAppearIO) {
+          try {
+            self._icPlayOnAppearIO.disconnect();
+          } catch (e) {}
+          self._icPlayOnAppearIO = null;
+        }
+        self._icPlayOnAppearPending = false;
+        self._icTimeline = null;
+      },
+      run: function run() {
+        var $scope = this.$element;
+        var self = this;
+        if (typeof gsap === 'undefined') {
+          return;
+        }
+        var $wrapper = $scope.find('.ha-ic-wrapper');
+        var $group = $scope.find('.ha-ic-group');
+        var $container = $scope.find('.ha-ic-container');
+        var $headings = $scope.find('.ha-ic-headings');
+        var $cards = $scope.find('.ha-ic-card');
+        if (!$cards.length || !$wrapper.length) {
+          return;
+        }
+
+        // Kill previous tweens / timelines to avoid duplicates in editor
+        if (self._icMm) {
+          try {
+            self._icMm.revert();
+          } catch (e) {}
+          self._icMm = null;
+        }
+        self._icClearPlayOnAppear();
+        gsap.killTweensOf($cards.get());
+        gsap.killTweensOf($group.get());
+        gsap.killTweensOf($container.get());
+        gsap.killTweensOf($headings.get());
+
+        // A timeline killed mid-entrance leaves its inline styles behind
+        // (oversized scale, offset, opacity) which the loading class cannot
+        // override — reset them synchronously so that state is never painted
+        $wrapper.addClass('ha-ic--loading');
+        gsap.set($cards.get(), {
+          clearProps: 'all'
+        });
+        gsap.set($group.get(), {
+          clearProps: 'all'
+        });
+        if ($container.length) {
+          gsap.set($container.get(), {
+            clearProps: 'all'
+          });
+        }
+        gsap.set($headings.get(), {
+          clearProps: 'all'
+        });
+
+        // Invalidate any pending async init from an earlier run() call,
+        // otherwise overlapping runs build two live timelines at once
+        self._icRunToken = (self._icRunToken || 0) + 1;
+        var runToken = self._icRunToken;
+        var didInit = false;
+        var doInit = function doInit() {
+          if (didInit) {
+            return;
+          }
+          // A newer run() started meanwhile — discard this stale init
+          if (runToken !== self._icRunToken) {
+            return;
+          }
+          didInit = true;
+          $wrapper.removeClass('ha-ic--loading');
+          self._runCycle($scope);
+        };
+
+        // Safety fallback: never leave headings hidden if image loading stalls
+        setTimeout(doInit, 5000);
+
+        // Preload background images before animating
+        if (typeof imagesLoaded !== 'undefined') {
+          try {
+            imagesLoaded($scope.find('.ha-ic-card__img').get(), {
+              background: true
+            }, doInit);
+          } catch (e) {
+            doInit();
+          }
+        } else {
+          doInit();
+        }
+      },
+      _runCycle: function _runCycle($scope) {
+        var self = this;
+
+        // Defensive: never build a new timeline while a stale one is alive
+        if (self._icMm) {
+          try {
+            self._icMm.revert();
+          } catch (e) {}
+          self._icMm = null;
+        }
+        var $wrapper = $scope.find('.ha-ic-wrapper');
+        var $group = $scope.find('.ha-ic-group');
+        var $container = $scope.find('.ha-ic-container');
+        var $headings = $scope.find('.ha-ic-headings');
+        var $cardElements = $scope.find('.ha-ic-card');
+        var cardEls = $cardElements.get();
+        var count = cardEls.length;
+        if (!count) {
+          return;
+        }
+        var settings = self.getElementSettings() || {};
+        var mode = settings.ha_ic_animation_mode || $wrapper.data('animation-mode') || 'variation-1';
+        var direction = settings.ha_ic_direction || 'bottom';
+        var rotationDir = 'counter-clockwise' === settings.ha_ic_rotation_direction ? -1 : 1;
+        var pauseOnHover = 'yes' === settings.ha_ic_pause_rotation_on_hover;
+        var playOnAppear = 'yes' === settings.ha_ic_play_on_appear;
+        // Counter-clockwise entrance: orbit the fan rotations a full turn in the
+        // opposite direction. Targets end at the same angle (mod 360), so the
+        // final ring layout stays identical to the clockwise one.
+        var spinOffset = 1 === rotationDir ? 0 : -360;
+
+        // Physics defaults from demo
+        var getRadius = function getRadius(settingKey) {
+          var value = settings[settingKey];
+          if (_typeof(value) === 'object' && value !== null) {
+            value = value.size;
+          }
+          if (value !== undefined && value !== '' && value !== null) {
+            var parsed = parseFloat(value);
+            if (!isNaN(parsed)) {
+              return parsed;
+            }
+          }
+          return null;
+        };
+        var radius = null;
+        if (elementorFrontend && elementorFrontend.utils && elementorFrontend.utils.controls) {
+          var responsiveValue = elementorFrontend.utils.controls.getResponsiveControlValue(settings, 'ha_ic_radius', 'size');
+          if (responsiveValue !== undefined && responsiveValue !== '' && responsiveValue !== null) {
+            var parsed = parseFloat(responsiveValue);
+            if (!isNaN(parsed)) {
+              radius = parsed;
+            }
+          }
+        }
+        if (radius === null) {
+          var radiusDesktop = getRadius('ha_ic_radius_desktop');
+          var radiusMobile = getRadius('ha_ic_radius_mobile');
+          radius = radiusDesktop !== null ? radiusDesktop : radiusMobile !== null ? radiusMobile : 250;
+        }
+        var radius1Base = null;
+        if (elementorFrontend && elementorFrontend.utils && elementorFrontend.utils.controls) {
+          var _responsiveValue = elementorFrontend.utils.controls.getResponsiveControlValue(settings, 'ha_ic_radius1', 'size');
+          if (_responsiveValue !== undefined && _responsiveValue !== '' && _responsiveValue !== null) {
+            var _parsed = parseFloat(_responsiveValue);
+            if (!isNaN(_parsed)) {
+              radius1Base = _parsed;
+            }
+          }
+        }
+        if (radius1Base === null) {
+          radius1Base = getRadius('ha_ic_radius1');
+        }
+        if (radius1Base === null) {
+          var radius1Tablet = getRadius('ha_ic_radius1_tablet');
+          var radius1Mobile = getRadius('ha_ic_radius1_mobile');
+          radius1Base = radius1Tablet !== null ? radius1Tablet : radius1Mobile !== null ? radius1Mobile : 50;
+        }
+        var staggerRaw = settings.ha_ic_stagger;
+        var stagger = staggerRaw !== undefined && staggerRaw !== '' ? parseFloat(staggerRaw) : mode === 'variation-3' ? 0.15 : 0.1;
+        if (mode === 'variation-3' && settings.ha_ic_stagger_v3 !== undefined && settings.ha_ic_stagger_v3 !== '') {
+          var sv3 = parseFloat(settings.ha_ic_stagger_v3);
+          if (!isNaN(sv3)) {
+            stagger = sv3;
+          }
+        }
+        var entranceDuration = settings.ha_ic_entrance_duration !== undefined && settings.ha_ic_entrance_duration !== '' ? parseFloat(settings.ha_ic_entrance_duration) : 0.5;
+        var headingDuration = settings.ha_ic_heading_duration !== undefined && settings.ha_ic_heading_duration !== '' ? parseFloat(settings.ha_ic_heading_duration) : 1;
+        var groupDuration = settings.ha_ic_group_duration !== undefined && settings.ha_ic_group_duration !== '' ? parseFloat(settings.ha_ic_group_duration) : 20;
+        var flipInterval = settings.ha_ic_flip_interval !== undefined && settings.ha_ic_flip_interval !== '' ? parseFloat(settings.ha_ic_flip_interval) : 2;
+        var initialScale = settings.ha_ic_initial_scale !== undefined && settings.ha_ic_initial_scale !== '' ? parseFloat(settings.ha_ic_initial_scale) : 3;
+        var initialOpacity = 0.8;
+        if (settings.ha_ic_initial_opacity !== undefined) {
+          if (_typeof(settings.ha_ic_initial_opacity) === 'object' && settings.ha_ic_initial_opacity.size !== undefined) {
+            var v = parseFloat(settings.ha_ic_initial_opacity.size);
+            if (!isNaN(v)) {
+              initialOpacity = v;
+            }
+          } else if (settings.ha_ic_initial_opacity !== '') {
+            var _v = parseFloat(settings.ha_ic_initial_opacity);
+            if (!isNaN(_v)) {
+              initialOpacity = _v;
+            }
+          }
+        }
+
+        // Variation-3 group rotates container, others rotate group
+        var breakPoint = '53em';
+        var mm = gsap.matchMedia();
+        self._icMm = mm;
+        self._icRotationTweens = [];
+        mm.add({
+          isDesktop: '(min-width: ' + breakPoint + ')',
+          isMobile: '(max-width: ' + breakPoint + ')'
+        }, function (context) {
+          var isDesktop = context.conditions.isDesktop;
+          var image = $scope.find('.ha-ic-card__img').get(0);
+          var sliceAngle = 2 * Math.PI / count;
+
+          // Ensure previous tweens cleared inside context
+          gsap.set(cardEls, {
+            clearProps: 'all'
+          });
+          gsap.set($group.get(0), {
+            clearProps: 'all'
+          });
+          if ($container.length) {
+            gsap.set($container.get(0), {
+              clearProps: 'all'
+            });
+          }
+          gsap.set($headings.get(), {
+            clearProps: 'all'
+          });
+          var entranceEnd = 0;
+          var tl;
+          if (mode === 'variation-1') {
+            var radius1 = radius1Base + (image ? image.clientHeight / 2 : 60);
+            var radius2 = radius - radius1;
+
+            // Base offsets on the wrapper itself (not the window) so the
+            // scaled cards always start fully outside the widget bounds —
+            // clipped by overflow — in both the editor preview and frontend
+            var wrapWidth = $wrapper.outerWidth() || window.innerWidth;
+            var wrapHeight = $wrapper.outerHeight() || window.innerHeight;
+            var offsetY = wrapHeight / 2 + (image ? image.clientHeight * 1.5 : 120);
+            var offsetX = wrapWidth / 2 + (image ? image.clientWidth * 1.5 : 120);
+            var entranceFrom = {
+              stagger: stagger,
+              duration: 0.5,
+              opacity: initialOpacity,
+              scale: initialScale
+            };
+            if ('top' === direction) {
+              entranceFrom.y = -offsetY;
+              entranceFrom.rotateX = 180 * rotationDir;
+            } else if ('left' === direction) {
+              entranceFrom.x = -offsetX;
+              entranceFrom.rotateY = -180 * rotationDir;
+            } else if ('right' === direction) {
+              entranceFrom.x = offsetX;
+              entranceFrom.rotateY = 180 * rotationDir;
+            } else {
+              entranceFrom.y = offsetY;
+              entranceFrom.rotateX = -180 * rotationDir;
+            }
+            tl = gsap.timeline();
+            tl.from(cardEls, entranceFrom).set(cardEls, {
+              transformOrigin: 'center ' + (radius1 + (image ? image.clientHeight / 2 : 60)) + 'px'
+            }).set($group.get(0), {
+              transformStyle: 'preserve-3d'
+            }).to(cardEls, {
+              y: -radius1,
+              duration: entranceDuration,
+              ease: 'power1.out'
+            }).to(cardEls, {
+              rotation: function rotation(index) {
+                return index * 360 / count + spinOffset;
+              },
+              rotateY: 15,
+              duration: 1,
+              ease: 'power1.out'
+            }, '<').to(cardEls, {
+              x: function x(index) {
+                return Math.round(radius2 * Math.cos(sliceAngle * index - Math.PI / 4));
+              },
+              y: function y(index) {
+                return Math.round(radius2 * Math.sin(sliceAngle * index - Math.PI / 4)) - radius1;
+              },
+              rotation: function rotation(index) {
+                return (index + 1) * (360 / count) + spinOffset;
+              }
+            }).to(cardEls, {
+              rotateY: 180,
+              opacity: initialOpacity,
+              duration: 1
+            }, '<').from($headings.get(), {
+              opacity: 0,
+              filter: 'blur(60px)',
+              duration: headingDuration
+            }, '<');
+            entranceEnd = tl.duration();
+            tl.to(cardEls, {
+              repeat: -1,
+              duration: flipInterval,
+              onRepeat: function onRepeat() {
+                gsap.to(cardEls[Math.floor(Math.random() * count)], {
+                  rotateY: '+=180'
+                });
+              }
+            });
+            var rotationTween = gsap.to($group.get(0), {
+              rotation: 360 * rotationDir,
+              duration: groupDuration,
+              repeat: -1,
+              ease: 'none'
+            });
+            tl.add(rotationTween, '<-=' + flipInterval);
+            self._icRotationTweens.push(rotationTween);
+          } else if (mode === 'variation-2') {
+            tl = gsap.timeline();
+            tl.from(cardEls, {
+              x: function x(index) {
+                var w = image ? image.clientWidth : 80;
+                return index % 2 ? -window.innerWidth / 2 - w * 4 : window.innerWidth / 2 + w * 4;
+              },
+              rotation: function rotation(index) {
+                return index % 2 ? -90 * rotationDir : 90 * rotationDir;
+              },
+              delay: function delay(index) {
+                return Math.floor(index / 2) * stagger;
+              },
+              duration: 1,
+              opacity: initialOpacity,
+              scale: initialScale,
+              ease: 'power4.out'
+            }).set(cardEls, {
+              scale: function scale(index) {
+                return index > count / 2 - 1 ? -1 : 1;
+              }
+            }).to(cardEls, {
+              y: function y(index) {
+                return (index >= Math.floor(count / 2) ? 1 : -1) * radius;
+              },
+              duration: entranceDuration,
+              ease: 'power2.out'
+            }).set(cardEls, {
+              transformOrigin: 'center ' + (radius + (image ? image.clientHeight / 2 : 60)) + 'px',
+              y: function y(index) {
+                if (index >= Math.floor(count / 2)) {
+                  return -radius;
+                }
+              }
+            }).to(cardEls, {
+              rotation: function rotation(index) {
+                return index > count / 2 - 1 ? (count - index - 1) * 360 / count + spinOffset : index * 360 / count + spinOffset;
+              },
+              opacity: initialOpacity,
+              duration: 1,
+              ease: 'power2.out'
+            }).from($headings.get(), {
+              opacity: 0,
+              filter: 'blur(60px)',
+              duration: 1.5
+            }, '<-=1');
+            entranceEnd = tl.duration();
+            tl.to(cardEls, {
+              repeat: -1,
+              duration: flipInterval,
+              onRepeat: function onRepeat() {
+                gsap.to(cardEls[Math.floor(Math.random() * count)], {
+                  rotateY: '+=180'
+                });
+              }
+            });
+            var _rotationTween = gsap.to($group.get(0), {
+              rotation: 360 * rotationDir,
+              duration: groupDuration,
+              repeat: -1,
+              ease: 'none'
+            });
+            tl.add(_rotationTween, '<-=1.5');
+            self._icRotationTweens.push(_rotationTween);
+          } else {
+            // variation-3
+            gsap.set(cardEls, {
+              x: function x(index) {
+                return Math.round(radius * Math.cos(sliceAngle * index - Math.PI / 4));
+              },
+              y: function y(index) {
+                return Math.round(radius * Math.sin(sliceAngle * index - Math.PI / 4));
+              },
+              rotation: function rotation(index) {
+                return (index + 1) * (360 / count);
+              }
+            });
+            tl = gsap.timeline();
+            tl.set(cardEls, {
+              opacity: 0,
+              scale: 0,
+              x: 0,
+              y: 0,
+              duration: 2
+            }).to(cardEls, {
+              stagger: stagger,
+              opacity: 1,
+              scale: 1,
+              duration: 1,
+              x: function x(index) {
+                return Math.round(radius * Math.cos(sliceAngle * index - Math.PI / 4));
+              },
+              y: function y(index) {
+                return Math.round(radius * Math.sin(sliceAngle * index - Math.PI / 4));
+              },
+              rotation: function rotation(index) {
+                return (index + 1) * (360 / count) + 360 * rotationDir;
+              }
+            }).to($group.get(0), {
+              rotation: rotationDir * 360 - 90,
+              duration: 3,
+              ease: 'power4.out'
+            }, 0).from($headings.get(), {
+              opacity: 0,
+              filter: 'blur(60px)',
+              duration: headingDuration
+            }, 1);
+            entranceEnd = tl.duration();
+            tl.to(cardEls, {
+              repeat: -1,
+              duration: flipInterval,
+              onRepeat: function onRepeat() {
+                gsap.to(cardEls[Math.floor(Math.random() * count)], {
+                  rotateY: '+=180'
+                });
+              }
+            });
+            var containerTarget = $container.length ? $container.get(0) : $group.get(0);
+            var _rotationTween2 = gsap.to(containerTarget, {
+              rotation: 1 === rotationDir ? '+=360' : '-=360',
+              duration: groupDuration,
+              ease: 'none',
+              repeat: -1
+            });
+            tl.add(_rotationTween2, 0);
+            self._icRotationTweens.push(_rotationTween2);
+          }
+          if (playOnAppear && !self._icHasEntered && entranceEnd > 0) {
+            // Hold the entrance until the widget reaches the center of the
+            // viewport while scrolling, then play from the beginning.
+            tl.pause(0);
+            self._icPlayOnAppearPending = true;
+            self._icTimeline = tl;
+            self._icObservePlayOnAppear($wrapper[0]);
+          } else {
+            if (self._icHasEntered && !self._icReplayEntrance && entranceEnd > 0) {
+              tl.time(entranceEnd + 0.001);
+            }
+            self._icHasEntered = true;
+          }
+          self._icReplayEntrance = false;
+          return function () {
+            if (tl) {
+              tl.kill();
+            }
+          };
+        });
+
+        // Pause the rotation while the mouse is over an image, resume on mouse out
+        $wrapper.off('.icRotationPause');
+        $cardElements.off('.icRotationPause');
+        clearTimeout(self._icResumeTimer);
+        if (pauseOnHover) {
+          $cardElements.on('mouseenter.icRotationPause', function () {
+            clearTimeout(self._icResumeTimer);
+            self._icSetRotationPaused(true);
+          });
+          $cardElements.on('mouseleave.icRotationPause', function () {
+            // Cards orbit around the ring, so a card may slide out from
+            // under the cursor while another is still hovered. Only resume
+            // once no card is hovered, with a short delay to avoid flicker.
+            var stillHovered = cardEls.some(function (el) {
+              return el.matches(':hover');
+            });
+            if (stillHovered) {
+              return;
+            }
+            clearTimeout(self._icResumeTimer);
+            self._icResumeTimer = setTimeout(function () {
+              self._icSetRotationPaused(false);
+            }, 60);
+          });
+          // Rebuilt while the mouse is already over an image (editor toggle):
+          // start paused instead of waiting for the next mouseenter
+          var hoveredOnInit = cardEls.some(function (el) {
+            return el.matches(':hover');
+          });
+          if (hoveredOnInit) {
+            self._icSetRotationPaused(true);
+          }
+        }
+      }
+    });
+
+    // Hook into Elementor's frontend ready event with svg draw
+    elementorFrontend.hooks.addAction('frontend/element_ready/ha-image-cycle.default', function ($scope) {
+      elementorFrontend.elementsHandler.addHandler(haImageCycleHandler, {
+        $element: $scope
+      });
+    });
   });
 })(jQuery);

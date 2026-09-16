@@ -41,12 +41,13 @@
         return tabTargetHash === a.hash;
       }).parent().addClass('current').siblings().removeClass('current');
     });
-    if (window.location.hash) {
-      $tabsNav.find('a[href="' + window.location.hash + '"]').click();
-      $sidebarSubmenu.find('a').filter(function (i, a) {
-        return window.location.hash === a.hash;
-      }).parent().addClass('current').siblings().removeClass('current');
+    if (!window.location.hash) {
+      window.location.hash = '#home';
     }
+    $tabsNav.find('a[href="' + window.location.hash + '"]').click();
+    $sidebarSubmenu.find('a').filter(function (i, a) {
+      return window.location.hash === a.hash;
+    }).parent().addClass('current').siblings().removeClass('current');
     $sidebarSubmenu.on('click', 'a', function (event) {
       if (!event.currentTarget.hash) {
         return true;
@@ -91,12 +92,30 @@
     $dashboardForm.on('change keyup paste', 'input', function () {
       $saveButton.attr('disabled', false).text(HappyDashboard.saveChangesLabel);
     });
+
+    // GSAP items are listed on both the Features/Widgets tabs and the GSAP
+    // tab. The whole form is serialized on save, so every duplicate control
+    // (same name + value) must mirror the same state.
+    $dashboardForm.on('change', ':checkbox', function () {
+      var source = this,
+        name = source.name,
+        value = source.value;
+      if (!name) {
+        return;
+      }
+      $dashboardForm.find(':checkbox').not(':disabled').each(function () {
+        if (this !== source && this.name === name && this.value === value) {
+          this.checked = source.checked;
+        }
+      });
+    });
     $('.ha-action--btn').on('click', function (event) {
       event.preventDefault();
       var $currentAction = $(this),
         filter = $currentAction.data('filter'),
         action = $currentAction.data('action'),
-        $all = $widgetsList.find('.ha-dashboard-widgets__item'),
+        $scope = $currentAction.closest('.ha-dashboard-tabs__content-item'),
+        $all = ($scope.length ? $scope : $widgetsList).find('.ha-dashboard-widgets__item'),
         $free = $all.not('.item--is-pro'),
         $pro = $all.filter('.item--is-pro');
       if (filter) {
@@ -116,7 +135,8 @@
         }
       }
       var $toggle_widget = $all.not('.item--is-placeholder').not('[style*="display:none"]').not('[style*="display: none"]').find(':checkbox.ha-widget'),
-        $toggle_feature = $all.not('.item--is-placeholder').not('[style*="display:none"]').not('[style*="display: none"]').find(':checkbox.ha-feature');
+        $toggle_feature = $all.not('.item--is-placeholder').not('[style*="display:none"]').not('[style*="display: none"]').find(':checkbox.ha-feature'),
+        $toggle_extension = $all.not('.item--is-placeholder').not('[style*="display:none"]').not('[style*="display: none"]').find(':checkbox.ha-extension');
       if (action) {
         if ('enable' === action) {
           $toggle_widget.prop('checked', true);
@@ -126,9 +146,20 @@
           $toggle_feature.prop('checked', true);
         } else if ('disable_feature' === action) {
           $toggle_feature.prop('checked', false);
+        } else if ('enable_extension' === action) {
+          $toggle_extension.prop('checked', true);
+        } else if ('disable_extension' === action) {
+          $toggle_extension.prop('checked', false);
+        } else if ('enable_gsap' === action) {
+          $toggle_feature.prop('checked', true);
+          $toggle_widget.prop('checked', true);
+        } else if ('disable_gsap' === action) {
+          $toggle_feature.prop('checked', false);
+          $toggle_widget.prop('checked', false);
         }
         $toggle_widget.trigger('change');
         $toggle_feature.trigger('change');
+        $toggle_extension.trigger('change');
       }
     });
     $('.ha-search-action--btn input').on('input', debounce(function (event) {

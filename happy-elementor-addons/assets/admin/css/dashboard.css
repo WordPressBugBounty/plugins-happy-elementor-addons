@@ -1,8 +1,8 @@
-.ha-dashboard .ha-dashboard-panel-analytics .ha-dashboard-analytics:after,
-.ha-dashboard-credentials:after,
-.ha-dashboard-widgets:after,
+.ha-dashboard-tabs__nav:after,
 .ha-dashboard-tabs__content-item:after,
-.ha-dashboard-tabs__nav:after {
+.ha-dashboard-widgets:after,
+.ha-dashboard-credentials:after,
+.ha-dashboard .ha-dashboard-panel-analytics .ha-dashboard-analytics:after {
 	display: block;
 	clear: both;
 	content: "";
@@ -79,9 +79,15 @@
 	font-weight: 700;
 	font-size: 14px;
 }
-@media screen and (min-width: 1200px) and (max-width: 1340px) {
+@media screen and (min-width: 1201px) and (max-width: 1366px) {
 	.ha-dashboard-tabs__nav-item {
 		padding: 15px 25px;
+	}
+}
+@media screen and (min-width: 1025px) and (max-width: 1200px) {
+	.ha-dashboard-tabs__nav-item {
+		padding: 15px;
+		font-size: 12px;
 	}
 }
 .ha-dashboard-tabs__nav-item--pro {
@@ -111,6 +117,30 @@
 }
 .ha-dashboard-tabs__nav-item:not(:last-child) {
 	margin-right: 10px;
+}
+@media screen and (max-width: 1024px) {
+	.ha-dashboard-tabs__nav {
+		display: -webkit-box;
+		display: -webkit-flex;
+		display: -ms-flexbox;
+		display:         flex;
+		-webkit-flex-wrap: wrap;
+		    -ms-flex-wrap: wrap;
+		        flex-wrap: wrap;
+	}
+	.ha-dashboard-tabs__nav-item {
+		float: none;
+		margin-right: 6px;
+		margin-bottom: 4px;
+		padding: 12px 14px;
+		font-size: 12px;
+	}
+	.ha-dashboard-tabs__nav-btn {
+		float: none;
+		margin: 4px 0 0 auto;
+		padding: 12px 20px;
+		width: auto;
+	}
 }
 .ha-dashboard-tabs__content-item {
 	display: none;
@@ -189,6 +219,13 @@
 .ha-dashboard-widgets__item.item--is-placeholder {
 	opacity: .7;
 }
+.ha-dashboard-widgets__item.item--is-always-on .ha-toggle__check {
+	cursor: not-allowed;
+}
+.ha-dashboard-widgets__item.item--is-always-on .ha-toggle__check:checked ~ .ha-toggle__track {
+	-webkit-box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .01);
+	        box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .01);
+}
 .ha-dashboard-widgets__item-icon {
 	display: inline-block;
 	margin-right: 10px;
@@ -208,7 +245,7 @@
 	margin: 0;
 	color: #444;
 	font-weight: 400;
-	font-size: 13px;
+	font-size: 16px;
 }
 .ha-dashboard-widgets__item-title > label {
 	font-weight: 700;
@@ -719,25 +756,37 @@ span.ha-search-action--btn input#ha-widget-search {
 	color: #fff;
 }
 .ha-action--btn[data-action=enable],
-.ha-action--btn[data-action=enable_feature] {
+.ha-action--btn[data-action=enable_feature],
+.ha-action--btn[data-action=enable_extension],
+.ha-action--btn[data-action=enable_gsap] {
 	color: #5db429;
 }
 .ha-action--btn[data-action=enable]:hover,
 .ha-action--btn[data-action=enable]:focus,
 .ha-action--btn[data-action=enable_feature]:hover,
-.ha-action--btn[data-action=enable_feature]:focus {
+.ha-action--btn[data-action=enable_feature]:focus,
+.ha-action--btn[data-action=enable_extension]:hover,
+.ha-action--btn[data-action=enable_extension]:focus,
+.ha-action--btn[data-action=enable_gsap]:hover,
+.ha-action--btn[data-action=enable_gsap]:focus {
 	border-color: #5db429;
 	background-color: #5db429;
 	color: #fff;
 }
 .ha-action--btn[data-action=disable],
-.ha-action--btn[data-action=disable_feature] {
+.ha-action--btn[data-action=disable_feature],
+.ha-action--btn[data-action=disable_extension],
+.ha-action--btn[data-action=disable_gsap] {
 	color: #e63d3d;
 }
 .ha-action--btn[data-action=disable]:hover,
 .ha-action--btn[data-action=disable]:focus,
 .ha-action--btn[data-action=disable_feature]:hover,
-.ha-action--btn[data-action=disable_feature]:focus {
+.ha-action--btn[data-action=disable_feature]:focus,
+.ha-action--btn[data-action=disable_extension]:hover,
+.ha-action--btn[data-action=disable_extension]:focus,
+.ha-action--btn[data-action=disable_gsap]:hover,
+.ha-action--btn[data-action=disable_gsap]:focus {
 	border-color: #e63d3d;
 	background-color: #e63d3d;
 	color: #fff;
