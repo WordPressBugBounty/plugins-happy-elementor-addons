@@ -1184,38 +1184,42 @@ function haObserveTarget(target, callback) {
       var navMenu = $scope.find('.ha-nav-menu');
 
       //for tablet only
-      if (jQuery(window).width() < 1025 && jQuery(window).width() > 767) {
-        var indicator = navMenu.find('.ha-submenu-indicator-wrap');
-        indicator.on('click', function (e) {
-          e.preventDefault();
-          var $parentEl = $(this).parent('li.menu-item-has-children');
-          if ($parentEl) {
-            $parentEl.children('ul.sub-menu').slideToggle();
-          }
-        });
-      }
+      // if ( jQuery( window ).width() < 1025 && jQuery( window ).width() > 767 ) {
+      // 	console.log(33)
+      // 	let indicator = navMenu.find( '.ha-submenu-indicator-wrap' );
+      // 	indicator.on( 'click', function ( e ) {
+      // 		e.preventDefault();
+      // 		console.log(11)
+      // 		let $parentEl = $( this ).parent( 'li.menu-item-has-children' );
+      // 		if ( $parentEl ) {
+      // 			$parentEl.children( 'ul.sub-menu' ).slideToggle();
+      // 			console.log(22)
+      // 		}
+      // 	} );
+      // }
+
       var humBurgerBtn = navMenu.find('.ha-menu-toggler');
       humBurgerBtn.on('click', function (e) {
         var humberger = $(this).data('humberger');
         var $pel = navMenu.find('ul.menu');
         if ('open' == humberger) {
-          $('.ha-menu-open-icon').addClass('hide-icon');
-          $('.ha-menu-close-icon').removeClass('hide-icon');
-          $('.ha-menu-close-icon').addClass('show-icon');
+          navMenu.find('.ha-menu-open-icon').addClass('hide-icon');
+          navMenu.find('.ha-menu-close-icon').removeClass('hide-icon');
+          navMenu.find('.ha-menu-close-icon').addClass('show-icon');
           $pel.slideDown();
         } else {
-          $('.ha-menu-close-icon').addClass('hide-icon');
-          $('.ha-menu-open-icon').removeClass('hide-icon');
-          $('.ha-menu-open-icon').addClass('show-icon');
+          navMenu.find('.ha-menu-close-icon').addClass('hide-icon');
+          navMenu.find('.ha-menu-open-icon').removeClass('hide-icon');
+          navMenu.find('.ha-menu-open-icon').addClass('show-icon');
           $pel.slideUp();
         }
       });
       function burgerClsAdd() {
-        if (jQuery(window).width() < 768) {
+        if (window.matchMedia('(max-width: 1024px)').matches) {
           navMenu.removeClass('ha-navigation-menu-wrapper');
           navMenu.addClass('ha-navigation-burger-menu');
           var humBurgerSubMenuBtn = navMenu.find('.ha-submenu-indicator-wrap');
-          humBurgerSubMenuBtn.on('click', function (e) {
+          humBurgerSubMenuBtn.off('click.haSubMenuToggle').on('click.haSubMenuToggle', function (e) {
             e.preventDefault();
             var $parentEl = $(this).parent('li.menu-item-has-children');
             if ($parentEl) {
@@ -1230,7 +1234,7 @@ function haObserveTarget(target, callback) {
         }
       }
       burgerClsAdd();
-      $window.on('resize', debounce(burgerClsAdd, 100));
+      $window.on('resize orientationchange', debounce(burgerClsAdd, 100));
     };
     elementorFrontend.hooks.addAction("frontend/element_ready/ha-navigation-menu.default", NavigationMenu);
     var AgeGate = function AgeGate($scope, $) {

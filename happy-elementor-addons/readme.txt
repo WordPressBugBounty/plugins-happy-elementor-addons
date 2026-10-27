@@ -1,13 +1,13 @@
 === HappyAddons for Elementor – 160 Elementor Widgets, GSAP Animations & Templates ===
 Plugin Name: HappyAddons for Elementor – 160 Elementor Widgets & Templates
-Version: 3.50.1
+Version: 3.51.0
 Author: Leevio
 Author URI: https://happyaddons.com/
 Contributors: leevio, happyaddons, thehappymonster, wedevs
 Tags: Elementor, Elementor Addons, Mega Menu, Header Footer Builder, Elementor Widget
 Requires at least: 6.8
 Tested up to: 7.1
-Stable tag: 3.50.1
+Stable tag: 3.51.0
 Requires PHP: 8.1
 License: GPLv2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -385,12 +385,18 @@ For a more detailed explanation check out the following documentation
 
 == Changelog ==
 
+= 3.51.0 - 27 October 2026 =
+
+- Update: Nav Menu Option and Style.
+- New: Added WPML support for the following widgets: Post Excerpt, Page Title, Post Featured Image, Image Cycle, Calendly, Lordicon, Svg Draw.
+- Fix: Nav Menu dropdown icon.
+- Fix: Resolved Mailchimp vulnerability.
+
 = 3.50.1 - 05 October 2026 =
 
 - Fix: Resolved Reading Progress Bar vulnerability.
 - Update: Added blur effect to inactive Image Accordion content.
 - Update: Improved Image Accordion active content behavior on load and hover.
-
 
 = 3.50.0 -  16 September 2026 =
 
